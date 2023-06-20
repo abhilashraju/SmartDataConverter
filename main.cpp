@@ -1,6 +1,7 @@
 #include "dbus_tree_parser.hpp"
 #include <iostream>
 using namespace dbus::utility;
+/***************Mock for dbus data begin********************************/
 enum class OriginatorTypes{
     Invalid,
     Client,
@@ -69,69 +70,7 @@ auto makeEntries(auto path)
          {"xyz.openbmc_project.State.Decorator.Availability2",
           availability_entry}}};
 }
-struct Extraction_Handlers : DbusBaseMapper
-    {
-        
-        
-        Extraction_Handlers()
-        {
-           
-            addInterfaceHandler("xyz.openbmc_project.License.Entry.LicenseEntry","Name",mapToKey("Abhilash"));
-            addInterfaceHandler("xyz.openbmc_project.License.Entry.LicenseEntry",
-                "AuthDeviceNumber", mapToKey<uint32_t>("AuthDeviceNumber"));
-            addInterfaceHandler("xyz.openbmc_project.License.Entry.LicenseEntry",
-                "SerialNumber", mapToKey<std::string>("Abilash/New Key",[](auto s ,MapperResult& mr,MetaData& md){
-                     
-                    if(mr != MapperResult::Ok){
-                        md.res=R"({"error":"some error"})"_json;
-                        return std::string();
-                    }
-                    return s;
-                }));
-            addInterfaceHandler("xyz.openbmc_project.License.Entry.LicenseEntry",
-                "SampleVec", mapToKey<AssociationsValType>("New Key/Old Key",[](std::string_view path, const auto& v){
-                    nlohmann::json j;
-                     j["New Key"]["Old Key"]=v;
-                     return j;
-                }));
-            
-
-            std::vector<handler_pair> AvailabilityExtractor;
-            addInterfaceHandler("xyz.openbmc_project.State.Decorator.Availability",
-                "Available",
-                mapToKeyOrError<std::vector<uint32_t>,nlohmann::json>("",
-                    [](auto val) {
-                    nlohmann::json j;
-                    j["Availability"] = val;
-                    return std::optional(j);
-                
-                }));
-                
-            addInterfaceHandler("xyz.openbmc_project.State.Decorator.Availability",
-                             "New Prop",mapToKey("prop"));
-            addInterfaceHandler("xyz.openbmc_project.Common.OriginatedBy",
-                             "OriginatorType",mapToEnumKey<OriginatorTypes>("Type",mapDbusOriginatorTypeToRedfish));
-        }
-    };
-
-struct CablePropertieMappers : DbusBaseMapper
-    {          
-        CablePropertieMappers()
-        {
-            addInterfaceHandler("xyz.openbmc_project.Inventory.Item.Cable",
-                "CableTypeDescription", mapToKeyOrError<std::string>("CableType"));
-            addInterfaceHandler("xyz.openbmc_project.Inventory.Item.Cable",
-                "LengthMeters", mapToKey<double>("LengthMeters")); 
-                // ,[](auto length){ 
-                //     if (std::isfinite(length) && std::isnan(length))
-                //     {
-                //         return std::optional(length);   
-                //     }
-                //     return std::optional<double>();
-                // })); 
-                
-        }
-    };
+/*****************************mock for dbus data ends***************************/
     
 int main()
 {
@@ -139,9 +78,6 @@ int main()
     auto entry2 = makeEntries("/xyz/openbmc_project/license/entry2/");
     ManagedObjectType resp = {entry1, entry2};
 
-    
-    Extraction_Handlers extraction_handlers;
-    CablePropertieMappers cableMappers;
     
     DbusBaseMapper mapper;
     mapper.addMap("CableTypeDescription", mapToKeyOrError<std::string>("@CableType"))
