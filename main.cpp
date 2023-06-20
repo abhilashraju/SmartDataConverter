@@ -78,16 +78,23 @@ int main()
     auto entry2 = makeEntries("/xyz/openbmc_project/license/entry2/");
     ManagedObjectType resp = {entry1, entry2};
 
-    
+    /*create a mapper object and configure it with required mappings*/
     DbusBaseMapper mapper;
-    mapper.addMap("CableTypeDescription", mapToKeyOrError<std::string>("@CableType"))
-          .addMap("LengthMeters", mapToKeyOrError<double,std::string>("LengthMeters",[](auto length){ 
+    /* simple mapping from debus string property to redfish attribute
+    This will be the mejority cases*/
+    mapper.addMap("CableTypeDescription", mapToKeyOrError<std::string>("@CableType"));
+    /* a non trivial mapping where some transformation is required before 
+    added as redfish attributes. In case of errors due missing dbus property or 
+    type missmatch or value bound issues redfish json with be added with error attributes
+    automatically with details of the erros as description*/
+    mapper.addMap("LengthMeters", mapToKeyOrError<double,std::string>("LengthMeters",[](auto length){ 
                     if (std::isfinite(length) && std::isnan(length))
                     {
                         return std::optional<std::string>();   
                     }
                     return std::optional(std::string("Hello"));
                 })); 
+    /* As above but returing a json sub structure which evenautally merge with final json*/
     mapper.addMap("Available",
                 mapToKeyOrError<std::vector<uint32_t>,nlohmann::json>("",
                     [](auto val) {
@@ -99,6 +106,8 @@ int main()
     auto obj=resp[0].second;
     auto propMap = obj[3].second;
     
+    /*The parser that take above mapper object and dbus data then  parses the dbus data 
+     based on supplied mapper . The results will be given in a callback as summary json*/
     DbusTreeParser(mapper,true)
     .parse(propMap,[ &result](DbusParserStatus status, const auto& summary) {
             result = summary;
