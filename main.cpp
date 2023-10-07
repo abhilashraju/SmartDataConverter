@@ -133,7 +133,7 @@ int main() {
       .filter([](const DbusTreeGenerator::value_type &v) {
         return std::get<0>(v) == "/xyz/openbmc_project/license/entry2/";
       })
-      .map<DbusVariantType>(
+      .map(
           [](const DbusTreeGenerator::value_type &v) { return std::get<3>(v); })
       .filter([](const DbusVariantType &v) {
         return std::holds_alternative<std::string>(v);
