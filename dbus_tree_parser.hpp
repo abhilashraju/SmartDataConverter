@@ -126,6 +126,20 @@ struct DbusTreeParser
     template <typename CompletionHandler>
         requires(std::invocable<CompletionHandler, DbusParserStatus,
                                 const nlohmann::json&>)
+    void parse(std::optional<DBusPropertiesMap*> propMap,
+               CompletionHandler&& compHandler)
+    {
+        if(propMap){
+            parse(*propMap.value(),std::forward<CompletionHandler>(compHandler));
+            return;
+        }
+        MetaData metaData;
+        metaData.res=R"({"error":"interface not found"})";
+        compHandler(DbusParserStatus::Failed, metaData.res);
+    }
+    template <typename CompletionHandler>
+        requires(std::invocable<CompletionHandler, DbusParserStatus,
+                                const nlohmann::json&>)
     void parse(const DBusPropertiesMap& propMap,
                CompletionHandler&& compHandler)
     {
@@ -189,7 +203,29 @@ struct DbusTreeParser
         }
     }
 };
-
+inline auto findItem(auto resp, std::string_view path) {
+  
+  using opt_pointer_type=typename std::decay_t<decltype(resp)>::value_type;
+  using opt_value_type=typename std::remove_pointer_t<opt_pointer_type>;
+  using return_type=opt_value_type::value_type::second_type;
+  if(!resp){
+    return std::optional<return_type*>();
+  }
+  
+  auto iter = std::ranges::find_if(*resp.value(), [&](auto &&v) {
+    return v.first == std::string(path.data(), path.length());
+  });
+  if (iter != resp.value()->end()) {
+    return std::optional(&iter->second);
+  }
+  return std::optional<return_type*>();
+}
+inline auto getObject(ManagedObjectType& resp, std::string_view path) {
+  return findItem(std::optional(&resp), path);
+}
+inline auto getInterface(auto obj, std::string_view ifacename) {
+  return findItem(obj, ifacename);
+}
 } // namespace utility
 
 } // namespace dbus
