@@ -119,14 +119,16 @@ int main() {
   auto propMap =
       getInterface(getObject(resp, "/xyz/openbmc_project/license/entry2/"),
                    "xyz.openbmc_project.Inventory.Item.Cable");
-
+  std::cout << "\n\ntesting Legacy  parser "
+               "************************************************\n\n";
   DbusTreeParser(mapper, true)
       .parse(propMap, [&result](DbusParserStatus status, const auto &summary) {
         result = summary;
       });
 
   std::cout << result.dump(4);
-
+  std::cout << "\n\ntesting Dbus tree generator "
+               "************************************************\n\n";
   auto treeGen = reactor::Flux<DbusTreeGenerator::value_type>::generate(
       DbusTreeGenerator(resp));
   treeGen
@@ -140,4 +142,25 @@ int main() {
       })
       .subscribe(
           [](const DbusVariantType &v) { std::visit(VariantHandler{}, v); });
+
+  std::cout << "\n\ntesting property map generator "
+               "************************************************\n\n";
+  auto propgen = reactor::Flux<DbusPropertyListGenerator::value_type>::generate(
+      DbusPropertyListGenerator{*propMap.value()});
+  propgen.subscribe([](const auto &v) {
+    std::cout << std::get<0>(v) << " ";
+    std::visit(VariantHandler{}, std::get<1>(v));
+  });
+
+  std::cout << "\n\ntesting DbusInterfaceList generator "
+               "************************************************\n\n";
+  auto ifacdList =
+      getObject(resp, "/xyz/openbmc_project/license/entry2/").value();
+  auto iFaceListGen =
+      reactor::Flux<DbusInterfaceListGenerator::value_type>::generate(
+          DbusInterfaceListGenerator{*(ifacdList)});
+  iFaceListGen.subscribe([](const auto &v) {
+    std::cout << std::get<0>(v) << " " << std::get<1>(v) << " ";
+    std::visit(VariantHandler{}, std::get<2>(v));
+  });
 }
