@@ -173,5 +173,33 @@ struct DbusInterfaceListGenerator {
     return ret;
   }
 };
+struct JsonConverter {
+  std::string toName;
+  nlohmann::json operator()(const auto &var) {
+    nlohmann::json j;
+    j[toName] = var;
+    return j;
+  }
+  nlohmann::json operator()(
+      const std::vector<std::tuple<sdbusplus::message::object_path, std::string,
+                                   std::string, std::string>> &var) {
+    return nlohmann::json();
+  }
+
+  nlohmann::json operator()(const sdbusplus::message::object_path &) {
+    return nlohmann::json();
+  }
+  nlohmann::json operator()(
+      const std::tuple<unsigned long long,
+                       std::vector<std::tuple<std::string, std::string, double,
+                                              unsigned long long>>> &) {
+    return nlohmann::json();
+  }
+};
+struct JsonCollector {
+  nlohmann::json myJson;
+  void operator()(const nlohmann::json &j) { myJson.merge_patch(j); }
+  auto toJson() const { return myJson; }
+};
 } // namespace utility
 } // namespace dbus

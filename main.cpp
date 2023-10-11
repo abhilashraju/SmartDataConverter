@@ -74,7 +74,7 @@ auto makeEntries(auto path) {
  * ends***************************/
 
 struct VariantHandler {
-  void operator()(auto &var) { std::cout << var << "\n"; }
+  void operator()(const auto &var) { std::cout << var << "\n"; }
   void operator()(
       const std::vector<std::tuple<std::string, std::string, std::string>>
           &var) {}
@@ -85,6 +85,7 @@ struct VariantHandler {
                        std::vector<std::tuple<std::string, std::string, double,
                                               unsigned long long>>> &) {}
 };
+
 int main() {
   auto entry1 = makeEntries("/xyz/openbmc_project/license/entry1/");
   auto entry2 = makeEntries("/xyz/openbmc_project/license/entry2/");
@@ -131,26 +132,31 @@ int main() {
                "************************************************\n\n";
   auto treeGen = reactor::Flux<DbusTreeGenerator::value_type>::generate(
       DbusTreeGenerator(resp));
-  treeGen
-      .filter([](const DbusTreeGenerator::value_type &v) {
-        return std::get<0>(v) == "/xyz/openbmc_project/license/entry2/";
-      })
-      .map(
-          [](const DbusTreeGenerator::value_type &v) { return std::get<3>(v); })
-      .filter([](const DbusVariantType &v) {
-        return std::holds_alternative<std::string>(v);
-      })
-      .subscribe(
-          [](const DbusVariantType &v) { std::visit(VariantHandler{}, v); });
+  auto jsonstr =
+      treeGen
+          .filter([](const DbusTreeGenerator::value_type &v) {
+            return std::get<0>(v) == "/xyz/openbmc_project/license/entry2/";
+          })
+          .map([](const DbusTreeGenerator::value_type &v) {
+            return std::visit(JsonConverter{std::get<2>(v)}, std::get<3>(v));
+          })
+          .to(JsonCollector())
+          .toJson()
+          .dump(4);
+  std::cout << jsonstr << "\n";
 
   std::cout << "\n\ntesting property map generator "
                "************************************************\n\n";
+
   auto propgen = reactor::Flux<DbusPropertyListGenerator::value_type>::generate(
       DbusPropertyListGenerator{*propMap.value()});
-  propgen.subscribe([](const auto &v) {
-    std::cout << std::get<0>(v) << " ";
-    std::visit(VariantHandler{}, std::get<1>(v));
-  });
+  auto coll =
+      propgen
+          .map([](const auto &v) {
+            return std::visit(JsonConverter{std::get<0>(v)}, std::get<1>(v));
+          })
+          .to(JsonCollector());
+  std::cout << coll.toJson().dump(4) << "\n";
 
   std::cout << "\n\ntesting DbusInterfaceList generator "
                "************************************************\n\n";
